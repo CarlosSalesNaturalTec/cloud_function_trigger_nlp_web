@@ -1,0 +1,11 @@
+# Usado pelo Functions Framework para executar a função
+functions-framework==3.*
+
+# Usado para fazer chamadas HTTP para o serviço de NLP
+requests==2.*
+
+# Usado para autenticação com serviços do Google Cloud (Cloud Run)
+google-auth==2.*
+
+# Usado para interagir com o Firestore (para system_logs)
+firebase-admin==6.*
