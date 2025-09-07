@@ -11,13 +11,13 @@ A função utiliza um gatilho condicional para garantir que seja executada apena
 
 ## 2. Detalhes Técnicos / Pilha Tecnológica
 
--   **Ambiente de Execução:** Google Cloud Functions (2ª geração)
--   **Runtime:** Python 3.11+
+-   **Ambiente de Execução:** Google Cloud Functions (1ª geração)
+-   **Runtime:** Python 3.12+
 -   **Framework:** [Google Cloud Functions Framework](https://github.com/GoogleCloudPlatform/functions-framework-python)
 -   **Dependências Principais:**
     -   `functions-framework`: Para o boilerplate e execução da função.
     -   `requests`: Para realizar chamadas HTTP para o serviço `api_nlp`.
-    -   `google-auth`: Para gerar um ID Token e autenticar a chamada para o serviço `api_nlp`.
+    -   `google-auth` e `google-oauth2`: Para gerar um ID Token e autenticar a chamada para o serviço `api_nlp`.
     -   `firebase-admin`: Para se conectar ao Firestore e escrever na coleção `system_logs`.
 
 ---
@@ -25,8 +25,8 @@ A função utiliza um gatilho condicional para garantir que seja executada apena
 
 ## 3. Gatilho (Trigger)
 
--   **Tipo:** Firestore Trigger
--   **Evento:** `google.firestore.document.v1.updated`
+-   **Tipo:** Firestore Trigger (Nativo de 1ª Geração)
+-   **Evento:** `providers/cloud.firestore/eventTypes/document.update`
 -   **Recurso:** `projects/{project_id}/databases/(default)/documents/monitor_results/{doc_id}`
 -   **Condição (Filtro de Evento):** A lógica interna da função verifica se o campo `status` no payload do evento mudou de qualquer valor para `scraper_ok`. Isso garante que o NLP seja acionado apenas uma vez, no momento exato em que o scraping é concluído com sucesso.
 
@@ -97,36 +97,25 @@ A conta de serviço associada a esta Cloud Function precisa ter as seguintes per
 ---
 
 
-## 9. Exemplo de Comando de Deploy
+## 9. Notas de Implementação e Histórico
 
-Execute o comando apropriado para o seu ambiente de shell a partir da raiz do diretório deste módulo.
+Seguindo o padrão estabelecido pelo `trigger-scraper`, esta função foi migrada de 2ª para 1ª Geração para garantir a estabilidade do gatilho do Firestore, contornando problemas com a infraestrutura do Eventarc. O método de autenticação também foi refatorado para usar `google.oauth2.id_token.fetch_id_token`, que é a abordagem correta para o ambiente de Cloud Functions.
 
-### 9.1. Windows (cmd.exe)
+---
 
-```cmd
-gcloud functions deploy trigger-nlp-web ^
-  --gen2 ^
-  --runtime=python311 ^
-  --region=us-central1 ^
-  --source=. ^
-  --entry-point=trigger_nlp_web ^
-  --trigger-event-filters="type=google.cloud.firestore.document.v1.updated" ^
-  --trigger-event-filters="database=(default)" ^
-  --trigger-event-filters="document=monitor_results/{doc_id}" ^
-  --set-env-vars API_NLP_SERVICE_URL="URL_DO_SEU_SERVICO_NLP"
-```
 
-### 9.2. Linux / macOS / Cloud Shell (bash)
+## 10. Exemplo de Comando de Deploy (1ª Geração)
+
+Execute o comando a partir da raiz do projeto. Lembre-se de substituir `"URL_DO_SEU_SERVICO_NLP"` pela URL real do seu serviço no Cloud Run.
 
 ```bash
-gcloud functions deploy trigger-nlp-web \
-  --gen2 \
-  --runtime=python311 \
-  --region=us-central1 \
-  --source=. \
+gcloud functions deploy trigger-nlp-web-v1 \
+  --no-gen2 \
+  --runtime=python312 \
+  --trigger-event="providers/cloud.firestore/eventTypes/document.update" \
+  --trigger-resource="projects/monitora-parlamentar-elmar/databases/(default)/documents/monitor_results/{docId}" \
+  --source=cloud_function_trigger_nlp_web \
   --entry-point=trigger_nlp_web \
-  --trigger-event-filters="type=google.cloud.firestore.document.v1.updated" \
-  --trigger-event-filters="database=(default)" \
-  --trigger-event-filters="document=monitor_results/{doc_id}" \
+  --region=us-central1 \
   --set-env-vars API_NLP_SERVICE_URL="URL_DO_SEU_SERVICO_NLP"
 ```
